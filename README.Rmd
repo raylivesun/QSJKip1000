@@ -1,5 +1,5 @@
 ---
-title: " KIP-1000: List Client Metrics Configuration Resources"
+title: "KIP-1000: List Client Metrics Configuration Resources"
 output: github_document
 ---
 
