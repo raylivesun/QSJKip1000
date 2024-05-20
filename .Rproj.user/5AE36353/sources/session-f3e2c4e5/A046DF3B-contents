@@ -1,0 +1,307 @@
+---
+title: "KIP-1000: List Client Metrics Configuration Resources"
+output: github_document
+---
+
+Created by [Andrew Schofield](https://cwiki.apache.org/confluence/display/~schofielaj), last modified on [Nov 20, 2023](https://cwiki.apache.org/confluence/pages/diffpagesbyversion.action?pageId=278465373&selectedPageVersions=8&selectedPageVersions=9 "Show changes")
+
+-   [Status](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-Status)
+
+-   [Motivation](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-Motivation)
+
+-   [Proposed Changes](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-ProposedChanges)
+
+-   [Public Interfaces](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-PublicInterfaces)
+
+    -   [Kafka Protocol](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-KafkaProtocol)
+
+        -   [ListClientMetricsResources RPC](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-ListClientMetricsResourcesRPC)
+
+    -   [Admin Client](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-AdminClient)
+
+    -   [Tools](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-Tools)
+
+        -   [kafka-client-metrics.sh](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-kafka-client-metrics.sh)
+
+-   [Security](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-Security)
+
+-   [Compatibility, Deprecation, and Migration Plan](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-Compatibility,Deprecation,andMigrationPlan)
+
+-   [Test Plan](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-TestPlan)
+
+-   [Rejected Alternatives](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1000%3A+List+Client+Metrics+Configuration+Resources#KIP1000:ListClientMetricsConfigurationResources-RejectedAlternatives)
+
+# Status
+
+**Current state**: *Accepted*
+
+**Discussion thread**: [*here*](https://www.mail-archive.com/dev@kafka.apache.org/msg135343.html)*\
+*
+
+**JIRA**: [*KAFKA-15831*](https://issues.apache.org/jira/browse/KAFKA-15831)*\
+*
+
+Please keep the discussion on the mailing list rather than commenting on the wiki (wiki discussions get unwieldy fast).
+
+# Motivation
+
+This
+KIP introduces a way to list the client metrics configuration resources
+introduced by KIP-714. The client metrics configuration resources can
+be created, read, updated and deleted using the existing RPCs and the `kafka-configs.sh`
+tool, in common with all of the other configuration resources. There
+is, as yet, no way to list these resources. Some configuration
+resources, such as brokers, are singletons. Some are associated with
+other Kafka resources, such as topics. Client metrics configuration
+resources are named, but not associated with another Kafka resource, so
+there needs to be a way to list them.
+
+# Proposed Changes
+
+The KIP adds a new RPC to the Kafka protocol called `ListClientMetricsResources`  which responds with a list of the client metrics configuration resources. It also adds `AdminClient.listClientMetricsResources` to provide a programming interface for building tools to list client metrics configuration resources.
+
+As an example, you could get the configuration for all of the client metrics resources using two calls:
+
++-----------------------------------------------------------+
+| `AdminClient.listClientMetricsResources()`                |
+|                                                           |
+| `AdminClient.describeConfigs(Collection<ConfigResource>)` |
++-----------------------------------------------------------+
+
+# Public Interfaces
+
+This
+KIP introduces support for obtaining a list of client metrics
+configuration resources to the Kafka protocol and admin client.
+
+## Kafka Protocol
+
+### ListClientMetricsResources RPC
+
+Client metrics configuration is only supported for KRaft clusters. This KIP is only supported for KRaft clusters.
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `{`                                                                                                                                                            |
+|                                                                                                                                                                |
+| `"apiKey": XX,`                                                                                                                                                |
+|                                                                                                                                                                |
+| `"type": "request",`                                                                                                                                           |
+|                                                                                                                                                                |
+| `"listeners": ["broker"],`                                                                                                                                     |
+|                                                                                                                                                                |
+| `"name": "ListClientMetricsResourcesRequest",`                                                                                                                 |
+|                                                                                                                                                                |
+| `"validVersions": "0",`                                                                                                                                        |
+|                                                                                                                                                                |
+| `"flexibleVersions": "0+",`                                                                                                                                    |
+|                                                                                                                                                                |
+| `"fields": [`                                                                                                                                                  |
+|                                                                                                                                                                |
+| `]`                                                                                                                                                            |
+|                                                                                                                                                                |
+| `}`                                                                                                                                                            |
+|                                                                                                                                                                |
+|                                                                                                                                                                |
+|                                                                                                                                                                |
+| `{`                                                                                                                                                            |
+|                                                                                                                                                                |
+| `"apiKey": XX,`                                                                                                                                                |
+|                                                                                                                                                                |
+| `"type": "response",`                                                                                                                                          |
+|                                                                                                                                                                |
+| `"name": "ListClientMetricsResourcesResponse",`                                                                                                                |
+|                                                                                                                                                                |
+| `"validVersions": "0",`                                                                                                                                        |
+|                                                                                                                                                                |
+| `"flexibleVersions": "0+",`                                                                                                                                    |
+|                                                                                                                                                                |
+| `"fields": [`                                                                                                                                                  |
+|                                                                                                                                                                |
+| `{ "name": "ThrottleTimeMs", "type": "int32", "versions": "0+",`                                                                                               |
+|                                                                                                                                                                |
+| `"about": "The duration in milliseconds for which the request was throttled due to a quota violation, or zero if the request did not violate any quota."` `},` |
+|                                                                                                                                                                |
+| `{ "name": "ErrorCode", "type": "int16", "versions": "0+"` `},`                                                                                                |
+|                                                                                                                                                                |
+| `{ "name": "ClientMetricsResources", "type": "[]ClientMetricsResource", "versions": "0+", "fields": [`                                                         |
+|                                                                                                                                                                |
+| `{ "name": "Name", "type": "string", "versions": "0+"` `}`                                                                                                     |
+|                                                                                                                                                                |
+| `]}`                                                                                                                                                           |
+|                                                                                                                                                                |
+| `]`                                                                                                                                                            |
+|                                                                                                                                                                |
+| `}`                                                                                                                                                            |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+## Admin Client
+
+The following methods are added to the `org.apache.kafka.client.admin.Admin` interface.
+
++-------------------------------------------------------------------------------------------------------------+
+| `/**`                                                                                                       |
+|                                                                                                             |
+| `* List the client metrics configuration resources available in the cluster.`                               |
+|                                                                                                             |
+| `*`                                                                                                         |
+|                                                                                                             |
+| `* @param options The options to use when listing the client metrics resources.`                            |
+|                                                                                                             |
+| `* @return The ListClientMetricsResourcesResult.`                                                           |
+|                                                                                                             |
+| `*/`                                                                                                        |
+|                                                                                                             |
+| `ListClientMetricsResourcesResult listClientMetricsResources(ListClientMetricsResourcesOptions options);`   |
+|                                                                                                             |
+|                                                                                                             |
+|                                                                                                             |
+| `/**`                                                                                                       |
+|                                                                                                             |
+| `* List the client metrics configuration resources available in the cluster with the default options.`      |
+|                                                                                                             |
+| `* <p>`                                                                                                     |
+|                                                                                                             |
+| `* This is a convenience method for {@link #listClientMetricsResources(ListClientMetricsResourcesOptions)}` |
+|                                                                                                             |
+| `* with default options. See the overload for more details.`                                                |
+|                                                                                                             |
+| `*`                                                                                                         |
+|                                                                                                             |
+| `* @return The ListClientMetricsResourcesResult.`                                                           |
+|                                                                                                             |
+| `*/`                                                                                                        |
+|                                                                                                             |
+| `default` `ListClientMetricsResourcesResult listClientMetricsResources() {`                                 |
+|                                                                                                             |
+| `return` `listClientMetricsResources(new` `ListClientMetricsResourcesOptions());`                           |
+|                                                                                                             |
+| `}`                                                                                                         |
++-------------------------------------------------------------------------------------------------------------+
+
+The options are defined as follows:
+
++---------------------------------------------------------------------------------------------------------------------+
+| `package` `org.apache.kafka.client.admin;`                                                                          |
+|                                                                                                                     |
+|                                                                                                                     |
+|                                                                                                                     |
+| `/**`                                                                                                               |
+|                                                                                                                     |
+| `* Options for {@link Admin#listClientMetricsResources()}.`                                                         |
+|                                                                                                                     |
+| `*`                                                                                                                 |
+|                                                                                                                     |
+| `* The API of this class is evolving, see {@link Admin} for details.`                                               |
+|                                                                                                                     |
+| `*/`                                                                                                                |
+|                                                                                                                     |
+| `@InterfaceStability.Evolving`                                                                                      |
+|                                                                                                                     |
+| `public` `class` `ListClientMetricsResourcesOptions extends` `AbstractOptions<ListClientMetricsResourcesOptions> {` |
+|                                                                                                                     |
+| `}`                                                                                                                 |
++---------------------------------------------------------------------------------------------------------------------+
+
+The result is defined as follows:
+
++-----------------------------------------------------------------------------------------+
+| `package` `org.apache.kafka.clients.admin;`                                             |
+|                                                                                         |
+|                                                                                         |
+|                                                                                         |
+| `/**`                                                                                   |
+|                                                                                         |
+| `* The result of the {@link Admin#listClientMetricsResources()} call.`                  |
+|                                                                                         |
+| `* <p>`                                                                                 |
+|                                                                                         |
+| `* The API of this class is evolving, see {@link Admin} for details.`                   |
+|                                                                                         |
+| `*/`                                                                                    |
+|                                                                                         |
+| `@InterfaceStability.Evolving`                                                          |
+|                                                                                         |
+| `public` `class` `ListClientMetricsResourcesResult {`                                   |
+|                                                                                         |
+| `/**`                                                                                   |
+|                                                                                         |
+| `* Returns a future that yields either an exception, or the full set of client metrics` |
+|                                                                                         |
+| `* resource listings.`                                                                  |
+|                                                                                         |
+| `*`                                                                                     |
+|                                                                                         |
+| `* In the event of a failure, the future yields nothing but the first exception which`  |
+|                                                                                         |
+| `* occurred.`                                                                           |
+|                                                                                         |
+| `*/`                                                                                    |
+|                                                                                         |
+| `public` `KafkaFuture<Collection<ClientMetricsResourceListing>> all() {`                |
+|                                                                                         |
+| `}`                                                                                     |
+|                                                                                         |
+| `}`                                                                                     |
++-----------------------------------------------------------------------------------------+
+
+And finally the listing itself, which is initially only the name:
+
++--------------------------------------------------------+
+| `package` `org.apache.kafka.clients.admin;`            |
+|                                                        |
+|                                                        |
+|                                                        |
+| `@InterfaceStability.Evolving`                         |
+|                                                        |
+| `public` `class` `ClientMetricsResourceListing {`      |
+|                                                        |
+| `private` `final` `String name;`                       |
+|                                                        |
+|                                                        |
+|                                                        |
+| `public` `ClientMetricsResourceListing(String name) {` |
+|                                                        |
+| `this.name = name;`                                    |
+|                                                        |
+| `}`                                                    |
+|                                                        |
+|                                                        |
+|                                                        |
+| `public` `String name() {`                             |
+|                                                        |
+| `return` `name;`                                       |
+|                                                        |
+| `}`                                                    |
+|                                                        |
+| `}`                                                    |
++--------------------------------------------------------+
+
+## Tools
+
+### kafka-client-metrics.sh
+
+A new option `--list`  is added to `kafka-client-metrics.sh` which lists the client metrics resources without describing them.
+
+|                                                                |
+|----------------------------------------------------------------|
+| `$ kafka-client-metrics.sh --bootstrap-server $BROKERS --list` |
+
+# Security
+
+Client metrics configuration resources are secured using the CLUSTER resource.
+
+|                            |         |                  |
+|:---------------------------|:--------|:-----------------|
+| ListClientMetricsResources | CLUSTER | DESCRIBE_CONFIGS |
+
+# Compatibility, Deprecation, and Migration Plan
+
+No impact.
+
+# Test Plan
+
+The KIP implementation will be accompanied by the usual set of unit tests.
+
+# Rejected Alternatives
+
+None.
